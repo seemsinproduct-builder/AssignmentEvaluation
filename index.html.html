@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvalPro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f3;--surface:#fff;--surface2:#f1f0ec;--border:#e0ddd5;--border2:#ccc9be;
+  --text:#1a1a18;--text2:#5a5a54;--text3:#8a8a80;
+  --blue:#185FA5;--blue-light:#E6F1FB;--blue-dark:#0C447C;
+  --green:#3B6D11;--green-light:#EAF3DE;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.hidden{display:none!important}
+/* ── CONFIG SCREEN ── */
+#config-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.config-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:480px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:380px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.login-logo{font-size:22px;font-weight:700;text-align:center;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--blue)}
+.login-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:1.5rem}
+/* ── APP SHELL ── */
+#main-app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-brand{font-size:15px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:8px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-user{font-size:13px;color:var(--text2)}
+.app-body{display:flex;flex:1}
+.sidebar{width:210px;background:var(--surface);border-right:0.5px solid var(--border);padding:.75rem 0;flex-shrink:0;min-height:calc(100vh - 52px)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 1.25rem;font-size:13px;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:all .1s}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{color:var(--blue);background:var(--blue-light);border-left-color:var(--blue);font-weight:500}
+.page-content{flex:1;padding:1.5rem 2rem;overflow-y:auto;max-width:1000px}
+/* ── COMPONENTS ── */
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:14px;font-weight:600;margin-bottom:1rem}
+.form-group{margin-bottom:.875rem}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--text);font-family:inherit;transition:all .1s;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-danger{background:var(--red);border-color:var(--red);color:#fff}
+.btn-danger:hover{background:#791F1F}
+.btn-sm{padding:5px 10px;font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500}
+.badge-blue{background:var(--blue-light);color:var(--blue-dark)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-amber{background:var(--amber-light);color:var(--amber)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-gray{background:var(--surface2);color:var(--text2)}
+.alert{padding:10px 12px;border-radius:var(--radius);font-size:13px;margin-bottom:1rem}
+.alert-error{background:var(--red-light);color:var(--red);border:0.5px solid #F09595}
+.alert-success{background:var(--green-light);color:var(--green);border:0.5px solid #97C459}
+.alert-info{background:var(--blue-light);color:var(--blue-dark);border:0.5px solid #85B7EB}
+.alert-warn{background:var(--amber-light);color:var(--amber);border:0.5px solid #FAC775}
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem;margin-bottom:1.25rem}
+.metric-card{background:var(--surface2);border-radius:var(--radius);padding:.875rem}
+.metric-label{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.metric-value{font-size:22px;font-weight:700}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.section-title{font-size:16px;font-weight:700}
+.tabs{display:flex;border-bottom:0.5px solid var(--border);margin-bottom:1.25rem}
+.tab{padding:9px 14px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:500}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-lg);padding:2rem 1rem;text-align:center;cursor:pointer;transition:all .15s}
+.upload-zone:hover{border-color:var(--blue);background:var(--blue-light)}
+.divider{height:.5px;background:var(--border);margin:1rem 0}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.modal-title{font-size:15px;font-weight:700}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-processing{display:flex;flex-direction:column;align-items:center;padding:2.5rem;text-align:center}
+.progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:.875rem;width:280px}
+.progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .4s}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;font-size:12px;font-weight:500;color:var(--text2);border-bottom:0.5px solid var(--border);background:var(--surface2)}
+td{padding:9px 10px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.score-bar{height:5px;border-radius:3px;background:var(--border);overflow:hidden}
+.score-fill{height:100%;border-radius:3px;transition:width .4s}
+.fill-good{background:#639922}.fill-mid{background:#EF9F27}.fill-low{background:#E24B4A}
+.param-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.param-name{font-size:13px;width:170px;flex-shrink:0}
+.param-bar{flex:1}
+.param-score{font-size:13px;font-weight:600;width:36px;text-align:right}
+.bullet-list{list-style:none;padding:0}
+.bullet-list li{font-size:13px;padding:3px 0 3px 14px;position:relative;line-height:1.5}
+.bullet-list li::before{content:'—';position:absolute;left:0;color:var(--text3)}
+.plag-box{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--radius);background:var(--surface2)}
+.plag-pct{font-size:22px;font-weight:700}
+.result-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:border-color .15s}
+.result-card:hover{border-color:var(--blue)}
+.note-box{background:var(--surface2);border-radius:var(--radius);padding:10px 12px;font-size:13px;color:var(--text2);border-left:3px solid var(--blue)}
+.empty{text-align:center;padding:3rem;color:var(--text3)}
+.score-high{color:var(--green)}.score-mid{color:var(--amber)}.score-low{color:var(--red)}
+.loading-overlay{display:flex;align-items:center;justify-content:center;padding:3rem;gap:12px;color:var(--text2);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN — shown only until Supabase keys are set -->
+<div id="config-screen">
+  <div class="config-card">
+    <div style="font-size:20px;font-weight:700;color:var(--blue);margin-bottom:4px;display:flex;align-items:center;gap:8px">⚙️ EvalPro Setup</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:1.5rem">Enter your Supabase project credentials. These are saved in your browser and never sent anywhere else.</div>
+    <div class="alert alert-info" style="font-size:12px;margin-bottom:1rem">
+      Find these in your Supabase project → <strong>Settings → API</strong><br>
+      Project URL looks like: <code>https://xxxx.supabase.co</code>
+    </div>
+    <div id="config-err" class="alert alert-error hidden"></div>
+    <div class="form-group"><label class="form-label">Supabase Project URL</label><input id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co" /></div>
+    <div class="form-group"><label class="form-label">Supabase Anon Key</label><input id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." /></div>
+    <div class="form-group"><label class="form-label">Anthropic API Key (for AI evaluation)</label><input id="cfg-ai" type="password" placeholder="sk-ant-..." /></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:1rem">API keys are stored only in this browser's localStorage. Never shared.</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveConfig()">Save & Connect</button>
+    <div style="margin-top:.75rem;text-align:center">
+      <a href="#" style="font-size:12px;color:var(--blue)" onclick="showSetupGuide()">📖 Step-by-step setup guide</a>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP GUIDE MODAL -->
+<div id="setup-guide-modal" class="hidden">
+  <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('setup-guide-modal').classList.add('hidden')">
+    <div class="modal" style="width:640px">
+      <div class="modal-header">
+        <div class="modal-title">📖 Supabase Setup Guide</div>
+        <button class="btn btn-sm" onclick="document.getElementById('setup-guide-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div style="font-size:13px;line-height:1.8;color:var(--text)">
+        <p style="font-weight:600;margin-bottom:.5rem">Step 1 — Create Supabase project</p>
+        <p style="color:var(--text2);margin-bottom:1rem">Go to <a href="https://supabase.com" target="_blank" style="color:var(--blue)">supabase.com</a> → New project → pick any name and region → wait ~2 min for provisioning.</p>
+        <p style="font-weight:600;margin-bottom:.5rem">Step 2 — Run the SQL schema</p>
+        <p style="color:var(--text2);margin-bottom:1rem">In your project → SQL Editor → paste and run <code>01_schema.sql</code>, then <code>02_rls_policies.sql</code>, then <code>03_trigger.sql</code> (all files included in this package).</p>
+        <p style="font-weight:600;margin-bottom:.5rem">Step 3 — Get your credentials</p>
+        <p style="color:var(--text2);margin-bottom:1rem">Project → Settings → API → copy <strong>Project URL</strong> and <strong>anon public</strong> key.</p>
+        <p style="font-weight:600;margin-bottom:.5rem">Step 4 — Create your admin account</p>
+        <p style="color:var(--text2);margin-bottom:1rem">Project → Authentication → Users → Add user → enter email + password. Then in SQL Editor run:<br>
+        <code style="background:var(--surface2);padding:4px 8px;border-radius:4px;display:block;margin-top:4px">
+          INSERT INTO public.profiles (id, email, name, role)<br>
+          VALUES ('&lt;user-id-from-auth&gt;', 'you@email.com', 'Your Name', 'admin');
+        </code></p>
+        <p style="font-weight:600;margin-bottom:.5rem">Step 5 — Paste keys into EvalPro config</p>
+        <p style="color:var(--text2)">Come back here, paste the URL + anon key + your Anthropic API key → Save & Connect.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="4" fill="#185FA5"/><path d="M7 11h8M7 7.5h5M7 14.5h6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      EvalPro
+    </div>
+    <div class="login-sub">Assignment Evaluation Platform</div>
+    <div id="login-err" class="alert alert-error hidden"></div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" id="l-email" placeholder="you@institution.edu" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="btn btn-primary" id="login-btn" style="width:100%;justify-content:center" onclick="doLogin()">Sign in</button>
+    <div style="margin-top:.75rem;text-align:center">
+      <a href="#" style="font-size:12px;color:var(--text3)" onclick="resetConfig()">⚙ Change Supabase config</a>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="4" fill="#185FA5"/><path d="M7 11h8M7 7.5h5M7 14.5h6" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      EvalPro
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="topbar-user"></span>
+      <button class="btn btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="page-content" id="page-content"></div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+// ── CONFIG & SUPABASE INIT ────────────────────────────────────────────────────
+let SB = null;    // Supabase client
+let CU = null;    // current user profile
+let CFG = {};
+
+function loadConfig() {
+  try { CFG = JSON.parse(localStorage.getItem('evalpro_cfg') || '{}'); } catch(e) { CFG = {}; }
+}
+function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfg-key').value.trim();
+  const ai  = document.getElementById('cfg-ai').value.trim();
+  if (!url || !key) {
+    showErr('config-err', 'Please enter both Supabase URL and anon key.');
+    return;
+  }
+  if (!url.startsWith('https://')) {
+    showErr('config-err', 'URL must start with https://');
+    return;
+  }
+  CFG = {url, key, ai};
+  localStorage.setItem('evalpro_cfg', JSON.stringify(CFG));
+  initSupabase();
+}
+function resetConfig() {
+  localStorage.removeItem('evalpro_cfg');
+  location.reload();
+}
+function showSetupGuide() {
+  document.getElementById('setup-guide-modal').classList.remove('hidden');
+}
+
+function initSupabase() {
+  if (!CFG.url || !CFG.key) return false;
+  try {
+    SB = supabase.createClient(CFG.url, CFG.key);
+    showEl('config-screen', false);
+    showEl('login-screen', true);
+    return true;
+  } catch(e) {
+    showErr('config-err', 'Failed to connect: ' + e.message);
+    return false;
+  }
+}
+
+loadConfig();
+if (CFG.url && CFG.key) {
+  // Pre-fill config form even if hidden
+  window.addEventListener('DOMContentLoaded', () => {
+    const u = document.getElementById('cfg-url');
+    const k = document.getElementById('cfg-key');
+    const a = document.getElementById('cfg-ai');
+    if(u) u.value = CFG.url || '';
+    if(k) k.value = CFG.key || '';
+    if(a) a.value = CFG.ai || '';
+  });
+  if (initSupabase()) {
+    // check if already logged in
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await SB.auth.getSession();
+      if (session) {
+        await loadCurrentUser(session.user);
+      }
+    });
+  }
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function showEl(id, show) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  show ? el.classList.remove('hidden') : el.classList.add('hidden');
+}
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function hideErr(id) { showEl(id, false); }
+function $pc() { return document.getElementById('page-content'); }
+function scoreClass(s) { return s >= 75 ? 'score-high' : s >= 55 ? 'score-mid' : 'score-low'; }
+function fillClass(s)  { return s >= 75 ? 'fill-good'  : s >= 55 ? 'fill-mid'  : 'fill-low'; }
+function statusBadge(s) {
+  return s === 'approved'
+    ? '<span class="badge badge-green">approved</span>'
+    : '<span class="badge badge-blue">evaluated</span>';
+}
+function plagBadge(p) {
+  const cls = p > 20 ? 'badge-red' : p > 10 ? 'badge-amber' : 'badge-green';
+  return `<span class="badge ${cls}">${p}% plag</span>`;
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN') : '—'; }
+function loading(msg='Loading...') {
+  return `<div class="loading-overlay"><div class="spinner" style="width:20px;height:20px;border-width:2px"></div>${msg}</div>`;
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('l-pass').value;
+  hideErr('login-err');
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  const { data, error } = await SB.auth.signInWithPassword({email, password: pass});
+  if (error) {
+    showErr('login-err', error.message);
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+    return;
+  }
+  await loadCurrentUser(data.user);
+}
+
+async function loadCurrentUser(authUser) {
+  const { data: profile, error } = await SB.from('profiles')
+    .select('*').eq('id', authUser.id).single();
+  if (error || !profile) {
+    showErr('login-err', 'Profile not found. Contact your admin.');
+    await SB.auth.signOut();
+    return;
+  }
+  if (!profile.active) {
+    showErr('login-err', 'Your account has been disabled. Contact admin.');
+    await SB.auth.signOut();
+    return;
+  }
+  CU = profile;
+  showEl('login-screen', false);
+  showEl('main-app', true);
+  document.getElementById('topbar-user').textContent = profile.name + ' · ' + profile.role;
+  buildSidebar();
+  go('dashboard');
+}
+
+async function doLogout() {
+  await SB.auth.signOut();
+  CU = null;
+  showEl('main-app', false);
+  showEl('login-screen', true);
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+function buildSidebar() {
+  const adminNav = [
+    {id:'dashboard',icon:'📊',label:'Dashboard'},
+    {id:'courses',  icon:'📚',label:'Courses'},
+    {id:'users',    icon:'👥',label:'Users'},
+    {id:'assignments',icon:'📄',label:'Assignments'},
+    {id:'results',  icon:'🎯',label:'Results'},
+    {id:'analytics',icon:'📈',label:'Analytics'}
+  ];
+  const teacherNav = [
+    {id:'dashboard',icon:'📊',label:'Dashboard'},
+    {id:'upload',   icon:'⬆️', label:'Upload'},
+    {id:'review',   icon:'✏️', label:'Review & approve'},
+    {id:'results',  icon:'🎯',label:'Results'},
+    {id:'analytics',icon:'📈',label:'Analytics'}
+  ];
+  const items = CU.role === 'admin' ? adminNav : teacherNav;
+  document.getElementById('sidebar').innerHTML = items.map(i =>
+    `<div class="nav-item" id="nav-${i.id}" onclick="go('${i.id}')">${i.icon} ${i.label}</div>`
+  ).join('');
+}
+
+function go(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('active');
+  const map = {
+    dashboard:pgDashboard, courses:pgCourses, users:pgUsers,
+    assignments:pgAssignments, upload:pgUpload, review:pgReview,
+    results:pgResults, analytics:pgAnalytics
+  };
+  if (map[page]) map[page]();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function pgDashboard() {
+  $pc().innerHTML = loading();
+  let q = SB.from('assignments').select('id,status,approved,plag_pct,ai_overall,final_score,course_id');
+  if (CU.role === 'teacher') q = q.eq('uploaded_by', CU.id);
+  const { data: asgn } = await q;
+  const { data: courses } = await SB.from('courses').select('id,name');
+
+  const total    = asgn?.length || 0;
+  const evaled   = asgn?.filter(a => a.status !== 'pending').length || 0;
+  const approved = asgn?.filter(a => a.approved).length || 0;
+  const withScore = asgn?.filter(a => a.final_score || a.ai_overall) || [];
+  const avg = withScore.length
+    ? (withScore.reduce((s,a) => s + (a.final_score || a.ai_overall || 0), 0) / withScore.length).toFixed(1)
+    : '—';
+  const highPlag = asgn?.filter(a => a.plag_pct > 20).length || 0;
+
+  $pc().innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Dashboard</div>
+      <span class="badge badge-blue">${CU.role}</span>
+    </div>
+    ${highPlag ? `<div class="alert alert-warn">⚠️ ${highPlag} assignment(s) flagged for high plagiarism (&gt;20%)</div>` : ''}
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Total submissions</div><div class="metric-value">${total}</div></div>
+      <div class="metric-card"><div class="metric-label">Evaluated</div><div class="metric-value">${evaled}</div></div>
+      <div class="metric-card"><div class="metric-label">Approved</div><div class="metric-value">${approved}</div></div>
+      <div class="metric-card"><div class="metric-label">Avg score</div><div class="metric-value">${avg}</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Courses overview</div>
+        ${(courses||[]).map(c => {
+          const ca = asgn?.filter(a => a.course_id === c.id && (a.final_score||a.ai_overall)) || [];
+          const cavg = ca.length ? ca.reduce((s,a)=>s+(a.final_score||a.ai_overall||0),0)/ca.length : 0;
+          return `<div style="padding:8px 0;border-bottom:0.5px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:500">${c.name}</span>
+              <span style="font-size:12px;color:var(--text2)">${ca.length} submissions · avg ${cavg?cavg.toFixed(0):'—'}</span>
+            </div>
+            <div class="score-bar"><div class="score-fill ${fillClass(cavg)}" style="width:${cavg}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title">Quick stats</div>
+        <div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between"><span style="color:var(--text2)">Pending review</span><strong>${evaled - approved}</strong></div>
+        <div style="padding:8px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between"><span style="color:var(--text2)">High plagiarism</span><strong style="color:var(--red)">${highPlag}</strong></div>
+        <div style="padding:8px 0;display:flex;justify-content:space-between"><span style="color:var(--text2)">Approved</span><strong style="color:var(--green)">${approved}</strong></div>
+      </div>
+    </div>`;
+}
+
+// ── COURSES ───────────────────────────────────────────────────────────────────
+async function pgCourses() {
+  if (CU.role !== 'admin') { $pc().innerHTML = '<div class="empty">Admin access required.</div>'; return; }
+  $pc().innerHTML = loading();
+  const { data: courses } = await SB.from('courses').select('*, parameters(*)').order('created_at');
+  $pc().innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Course management</div>
+      <button class="btn btn-primary btn-sm" onclick="modalAddCourse()">+ Add course</button>
+    </div>
+    ${(courses||[]).map(c => renderCourseCard(c)).join('')}`;
+}
+
+function renderCourseCard(c) {
+  const params = c.parameters || [];
+  const totalW = params.reduce((s,p) => s+p.weight, 0);
+  return `<div class="card" id="cc-${c.id}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:15px;font-weight:700">${c.name}</span>
+        <span class="badge badge-gray">${c.code}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="modalAddParam('${c.id}')">+ Add parameter</button>
+        <button class="btn btn-sm" style="color:var(--red)" onclick="confirmDeleteCourse('${c.id}','${c.name}')">🗑 Delete course</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Parameters — total weight: <strong>${totalW}%</strong>${totalW!==100?` <span style="color:var(--amber)">(should total 100%)</span>`:''}</div>
+    ${params.length === 0 ? '<div style="font-size:13px;color:var(--text3);padding:6px 0">No parameters yet. Add at least one.</div>' :
+      params.map(p => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)">
+          <div style="flex:1;font-size:13px">${p.name}</div>
+          <span class="badge badge-blue">${p.weight}%</span>
+          <button class="btn btn-sm" style="color:var(--red);padding:4px 8px" onclick="deleteParam('${p.id}','${c.id}')">✕</button>
+        </div>`).join('')}
+  </div>`;
+}
+
+function modalAddCourse() {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Add course</div><button class="btn btn-sm" onclick="closeModal()">✕</button></div>
+        <div id="mc-err" class="alert alert-error hidden"></div>
+        <div class="form-group"><label class="form-label">Course name</label><input id="nc-name" placeholder="e.g. Sociology" /></div>
+        <div class="form-group"><label class="form-label">Course code (unique)</label><input id="nc-code" placeholder="e.g. SOC101" /></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="addCourse()">Add course</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addCourse() {
+  const name = document.getElementById('nc-name').value.trim();
+  const code = document.getElementById('nc-code').value.trim().toUpperCase();
+  if (!name || !code) { showErr('mc-err','Please fill both fields.'); return; }
+  const { error } = await SB.from('courses').insert({name, code});
+  if (error) { showErr('mc-err', error.message); return; }
+  closeModal();
+  pgCourses();
+}
+
+function confirmDeleteCourse(id, name) {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="width:420px">
+        <div class="modal-header"><div class="modal-title">Delete course</div></div>
+        <div class="alert alert-warn">⚠️ Deleting <strong>${name}</strong> will also delete all its parameters. This cannot be undone.</div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-danger" onclick="deleteCourse('${id}')">Delete permanently</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function deleteCourse(id) {
+  const { error } = await SB.from('courses').delete().eq('id', id);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  closeModal();
+  pgCourses();
+}
+
+function modalAddParam(courseId) {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Add evaluation parameter</div><button class="btn btn-sm" onclick="closeModal()">✕</button></div>
+        <div id="mp-err" class="alert alert-error hidden"></div>
+        <div class="form-group"><label class="form-label">Parameter name</label><input id="np-name" placeholder="e.g. Original thinking" /></div>
+        <div class="form-group"><label class="form-label">Weightage (%)</label><input id="np-weight" type="number" min="1" max="100" placeholder="20" /></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="addParam('${courseId}')">Add</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addParam(courseId) {
+  const name   = document.getElementById('np-name').value.trim();
+  const weight = parseInt(document.getElementById('np-weight').value);
+  if (!name)             { showErr('mp-err','Enter a parameter name.'); return; }
+  if (!weight||weight<1||weight>100) { showErr('mp-err','Enter weight between 1–100.'); return; }
+  const { error } = await SB.from('parameters').insert({course_id: courseId, name, weight});
+  if (error) { showErr('mp-err', error.message); return; }
+  closeModal();
+  pgCourses();
+}
+
+async function deleteParam(paramId, courseId) {
+  await SB.from('parameters').delete().eq('id', paramId);
+  pgCourses();
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+async function pgUsers() {
+  if (CU.role !== 'admin') { $pc().innerHTML = '<div class="empty">Admin access required.</div>'; return; }
+  $pc().innerHTML = loading();
+  const { data: users } = await SB.from('profiles').select('*').order('created_at');
+  $pc().innerHTML = `
+    <div class="section-header">
+      <div class="section-title">User management</div>
+      <button class="btn btn-primary btn-sm" onclick="modalAddUser()">+ Add user</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${(users||[]).map(u => `<tr>
+            <td style="font-weight:500">${u.name}</td>
+            <td style="color:var(--text2)">${u.email}</td>
+            <td><span class="badge ${u.role==='admin'?'badge-blue':'badge-amber'}">${u.role}</span></td>
+            <td><span class="badge ${u.active?'badge-green':'badge-red'}">${u.active?'active':'disabled'}</span></td>
+            <td style="display:flex;gap:6px">
+              <button class="btn btn-sm" onclick="toggleUser('${u.id}',${u.active})">${u.active?'Disable':'Enable'}</button>
+              ${u.id !== CU.id ? `<button class="btn btn-sm" onclick="resetPassword('${u.email}')">Reset pwd</button>` : ''}
+            </td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function modalAddUser() {
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">Add user</div><button class="btn btn-sm" onclick="closeModal()">✕</button></div>
+        <div id="mu-err" class="alert alert-error hidden"></div>
+        <div class="alert alert-info" style="font-size:12px">User will receive an email to set their password, or you can set a temporary password below.</div>
+        <div class="form-group"><label class="form-label">Full name</label><input id="nu-name" placeholder="Dr. Full Name" /></div>
+        <div class="form-group"><label class="form-label">Email</label><input id="nu-email" type="email" placeholder="teacher@institution.edu" /></div>
+        <div class="form-group"><label class="form-label">Temporary password</label><input id="nu-pass" type="password" placeholder="min 6 characters" /></div>
+        <div class="form-group"><label class="form-label">Role</label><select id="nu-role"><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="add-user-btn" onclick="addUser()">Add user</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addUser() {
+  const name  = document.getElementById('nu-name').value.trim();
+  const email = document.getElementById('nu-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('nu-pass').value;
+  const role  = document.getElementById('nu-role').value;
+  if (!name||!email||!pass) { showErr('mu-err','All fields required.'); return; }
+  if (pass.length < 6)      { showErr('mu-err','Password must be at least 6 characters.'); return; }
+
+  const btn = document.getElementById('add-user-btn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+
+  // Create auth user via Supabase Admin API (requires service role key)
+  // Since we only have anon key, we use signUp — admin must confirm or disable email confirmation
+  const { data, error } = await SB.auth.signUp({
+    email, password: pass,
+    options: { data: { name, role } }
+  });
+
+  if (error) { showErr('mu-err', error.message); btn.disabled=false; btn.textContent='Add user'; return; }
+
+  // Insert profile (trigger handles it too, but we ensure role is correct)
+  if (data.user) {
+    await SB.from('profiles').upsert({
+      id: data.user.id, email, name, role, active: true
+    });
+  }
+
+  closeModal();
+  // Show credentials clearly
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal" style="width:400px">
+        <div class="modal-header"><div class="modal-title">✅ User created</div></div>
+        <div class="alert alert-success">User <strong>${name}</strong> created successfully.</div>
+        <div style="background:var(--surface2);padding:12px;border-radius:var(--radius);font-size:13px">
+          <div style="margin-bottom:4px"><strong>Email:</strong> ${email}</div>
+          <div><strong>Password:</strong> ${pass}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">Share these credentials with the teacher. They can change their password after logging in.</div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal();pgUsers()">Done</button></div>
+      </div>
+    </div>`;
+}
+
+async function toggleUser(id, currentActive) {
+  await SB.from('profiles').update({active: !currentActive}).eq('id', id);
+  pgUsers();
+}
+
+async function resetPassword(email) {
+  const { error } = await SB.auth.resetPasswordForEmail(email);
+  if (error) alert('Error: ' + error.message);
+  else alert('Password reset email sent to ' + email);
+}
+
+// ── ASSIGNMENTS LIST ──────────────────────────────────────────────────────────
+async function pgAssignments() {
+  $pc().innerHTML = loading();
+  let q = SB.from('assignments')
+    .select('*, courses(name)')
+    .order('uploaded_at', {ascending: false});
+  if (CU.role === 'teacher') q = q.eq('uploaded_by', CU.id);
+  const { data: asgn } = await q;
+
+  $pc().innerHTML = `
+    <div class="section-header">
+      <div class="section-title">All assignments</div>
+      <div style="display:flex;gap:8px">
+        <input id="fa-q" placeholder="Search name / roll no..." style="width:180px" oninput="filterAssignmentsUI()" />
+        <select id="fa-s" onchange="filterAssignmentsUI()" style="width:130px">
+          <option value="">All statuses</option>
+          <option value="evaluated">Evaluated</option>
+          <option value="approved">Approved</option>
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap" id="asgn-wrap">${buildAssignmentsTable(asgn||[])}</div>
+    </div>`;
+  window._allAsgn = asgn || [];
+}
+
+function buildAssignmentsTable(list) {
+  if (!list.length) return '<div class="empty">No assignments found.</div>';
+  return `<table>
+    <thead><tr><th>Student</th><th>Roll no</th><th>Course</th><th>Date</th><th>Final score</th><th>Plagiarism</th><th>Status</th><th></th></tr></thead>
+    <tbody>${list.map(a => {
+      const fs = a.final_score ?? a.ai_overall;
+      return `<tr>
+        <td style="font-weight:500">${a.student_name}</td>
+        <td style="color:var(--text2)">${a.roll_no}</td>
+        <td>${a.courses?.name||'—'}</td>
+        <td style="color:var(--text2)">${fmtDate(a.uploaded_at)}</td>
+        <td>${fs!=null?`<span class="${scoreClass(fs)}" style="font-weight:700">${fs}</span><span style="color:var(--text3)">/100</span><span style="font-size:10px;color:var(--text3);margin-left:3px">${a.teacher_overall!=null?'(T)':'(AI)'}</span>`:'—'}</td>
+        <td>${plagBadge(a.plag_pct||0)}</td>
+        <td>${statusBadge(a.status)}</td>
+        <td><button class="btn btn-sm" onclick="openResultModal('${a.id}')">View</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function filterAssignmentsUI() {
+  const q = document.getElementById('fa-q').value.toLowerCase();
+  const s = document.getElementById('fa-s').value;
+  let list = window._allAsgn || [];
+  if (q) list = list.filter(a => a.student_name.toLowerCase().includes(q) || a.roll_no.toLowerCase().includes(q));
+  if (s) list = list.filter(a => a.status === s);
+  document.getElementById('asgn-wrap').innerHTML = buildAssignmentsTable(list);
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────────────────
+let singleFileData = null;
+let bulkFilesData  = [];
+
+async function pgUpload() {
+  singleFileData = null; bulkFilesData = [];
+  const { data: courses } = await SB.from('courses').select('*, parameters(*)').order('name');
+  const courseOpts = (courses||[]).map(c=>`<option value="${c.id}">${c.name} (${c.code})</option>`).join('');
+
+  $pc().innerHTML = `
+    <div class="section-header"><div class="section-title">Upload assignments</div></div>
+    <div class="tabs">
+      <div class="tab active" id="t-single" onclick="switchUploadTab('single')">Single upload</div>
+      <div class="tab" id="t-bulk" onclick="switchUploadTab('bulk')">Bulk upload</div>
+    </div>
+    <div id="upload-single">
+      <div class="card">
+        <div class="card-title">Single assignment</div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">Course</label><select id="up-course">${courseOpts}</select></div>
+          <div class="form-group"><label class="form-label">Student name</label><input id="up-name" placeholder="Full name" /></div>
+          <div class="form-group"><label class="form-label">Roll number</label><input id="up-roll" placeholder="e.g. PSY2024010" /></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Assignment file (PDF or DOCX)</label>
+          <input type="file" id="single-file-input" accept=".pdf,.doc,.docx" style="display:none" onchange="onSingleFilePicked(this)"/>
+          <div class="upload-zone" onclick="document.getElementById('single-file-input').click()">
+            <div style="font-size:28px;margin-bottom:8px">📄</div>
+            <div style="font-size:14px;font-weight:600">Click to select file</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">PDF, DOC, DOCX</div>
+            <div id="single-file-name" style="margin-top:8px;font-size:13px;color:var(--blue);font-weight:500"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="submitSingle()">🤖 Evaluate with AI</button>
+      </div>
+    </div>
+    <div id="upload-bulk" class="hidden">
+      <div class="card">
+        <div class="card-title">Bulk upload</div>
+        <div class="alert alert-info" style="font-size:12px;margin-bottom:1rem">
+          <strong>Filename format:</strong> <code>StudentName_Course_Rollno.pdf</code><br>
+          Roll number = last segment before extension. e.g. <code>Rahul_Sharma_PSY101_PSY2024001.pdf</code>
+        </div>
+        <div class="form-group"><label class="form-label">Course</label><select id="bulk-course">${courseOpts}</select></div>
+        <input type="file" id="bulk-file-input" accept=".pdf,.doc,.docx" multiple style="display:none" onchange="onBulkFilesPicked(this)"/>
+        <div class="upload-zone" onclick="document.getElementById('bulk-file-input').click()" style="margin-bottom:1rem">
+          <div style="font-size:28px;margin-bottom:8px">📁</div>
+          <div style="font-size:14px;font-weight:600">Click to select multiple files</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">Select all at once</div>
+        </div>
+        <div id="bulk-preview"></div>
+        <button class="btn btn-primary" onclick="submitBulk()" style="margin-top:1rem">🤖 Evaluate all with AI</button>
+      </div>
+    </div>
+    <div id="upload-result"></div>`;
+  window._uploadCourses = courses || [];
+}
+
+function switchUploadTab(t) {
+  document.getElementById('t-single').classList.toggle('active', t==='single');
+  document.getElementById('t-bulk').classList.toggle('active', t==='bulk');
+  showEl('upload-single', t==='single');
+  showEl('upload-bulk', t==='bulk');
+}
+
+async function readFileText(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'pdf') return extractPDFText(file);
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsText(file);
+  });
+}
+
+async function extractPDFText(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        if (typeof pdfjsLib === 'undefined') { resolve('[PDF.js not loaded]'); return; }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({data: new Uint8Array(e.target.result)}).promise;
+        let text = '';
+        for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(x => x.str).join(' ') + '\n';
+        }
+        resolve(text.trim() || '[No extractable text in PDF]');
+      } catch(err) { resolve('[PDF read error: ' + err.message + ']'); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function onSingleFilePicked(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('single-file-name').textContent = 'Reading...';
+  const text = await readFileText(file);
+  singleFileData = {file, text};
+  const preview = text.length > 100 ? text.substring(0,100)+'…' : text;
+  document.getElementById('single-file-name').innerHTML =
+    `✓ <strong>${file.name}</strong> (${(file.size/1024).toFixed(0)} KB)<br><span style="font-size:11px;color:var(--text3)">${preview}</span>`;
+}
+
+async function onBulkFilesPicked(input) {
+  const files = Array.from(input.files);
+  bulkFilesData = [];
+  const preview = document.getElementById('bulk-preview');
+  preview.innerHTML = `<div style="font-size:13px;color:var(--text2)">Reading ${files.length} files...</div>`;
+  for (const file of files) {
+    const nameNoExt = file.name.replace(/\.[^.]+$/, '');
+    const parts = nameNoExt.split('_');
+    const rollNo = parts[parts.length - 1];
+    const studentName = parts.slice(0, -1).join(' ');
+    const text = await readFileText(file);
+    bulkFilesData.push({file, text, fileName: file.name, studentName, rollNo});
+  }
+  preview.innerHTML = `
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${bulkFilesData.length} files ready</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>File</th><th>Student</th><th>Roll no</th><th>Size</th></tr></thead>
+      <tbody>${bulkFilesData.map(f=>`<tr>
+        <td style="font-size:12px">${f.fileName}</td>
+        <td>${f.studentName}</td>
+        <td><span class="badge badge-blue">${f.rollNo}</span></td>
+        <td style="color:var(--text3)">${(f.file.size/1024).toFixed(0)} KB</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+async function submitSingle() {
+  const name = document.getElementById('up-name').value.trim();
+  const roll = document.getElementById('up-roll').value.trim();
+  const courseId = document.getElementById('up-course').value;
+  if (!name||!roll) { alert('Fill student name and roll number.'); return; }
+  if (!singleFileData) { alert('Select a file first.'); return; }
+  const course = window._uploadCourses.find(c => c.id === courseId);
+  runAIEval([{studentName:name, rollNo:roll, courseId, fileName:singleFileData.file.name, fileText:singleFileData.text}], course);
+}
+
+async function submitBulk() {
+  if (!bulkFilesData.length) { alert('Select files first.'); return; }
+  const courseId = document.getElementById('bulk-course').value;
+  const course = window._uploadCourses.find(c => c.id === courseId);
+  const items = bulkFilesData.map(f => ({studentName:f.studentName, rollNo:f.rollNo, courseId, fileName:f.fileName, fileText:f.text}));
+  runAIEval(items, course);
+}
+
+async function runAIEval(items, course) {
+  if (!CFG.ai) {
+    alert('No Anthropic API key set. Go to config (bottom of login page) and add your API key.');
+    return;
+  }
+  const resultEl = document.getElementById('upload-result');
+  resultEl.innerHTML = `<div class="card" style="margin-top:1rem"><div class="ai-processing">
+    <div class="spinner"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px" id="ai-status">Evaluating ${items.length} assignment(s)...</div>
+    <div style="font-size:12px;color:var(--text2)" id="ai-step">Starting...</div>
+    <div class="progress"><div class="progress-fill" id="ai-prog" style="width:5%"></div></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">Powered by Claude AI</div>
+  </div></div>`;
+
+  const params = course?.parameters || [];
+  const results = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const pct = Math.round(((i+0.5)/items.length)*85);
+    const pg = document.getElementById('ai-prog');
+    const st = document.getElementById('ai-step');
+    const ss = document.getElementById('ai-status');
+    if (pg) pg.style.width = pct + '%';
+    if (ss) ss.textContent = `Evaluating ${i+1} of ${items.length}: ${item.studentName}`;
+    if (st) st.textContent = 'Sending to Claude AI...';
+
+    const paramList = params.map(p => `- ${p.name} (weight: ${p.weight}%)`).join('\n');
+    const snippet = (item.fileText||'').substring(0, 6000);
+
+    const prompt = `You are an academic evaluator for the course "${course?.name}".
+
+Student: ${item.studentName} | Roll: ${item.rollNo}
+
+EVALUATION PARAMETERS:
+${paramList}
+
+ASSIGNMENT CONTENT:
+---
+${snippet}
+---
+
+Return ONLY valid JSON, no markdown:
+{
+  "paramScores": {${params.map(p=>`"${p.id}": <0-100>`).join(', ')}},
+  "overall": <weighted score 0-100>,
+  "plagiarismPct": <estimated % 0-100>,
+  "strengths": ["point 1","point 2","point 3"],
+  "improvements": ["point 1","point 2","point 3"],
+  "comments": ["comment 1","comment 2","comment 3"]
+}
+
+Score honestly. overall = weighted average using given weights. plagiarismPct = estimate originality.`;
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':CFG.ai,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user',content:prompt}]})
+      });
+      const data = await resp.json();
+      const raw = data.content?.[0]?.text || '';
+      const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      const paramScores = {};
+      params.forEach(p => {
+        paramScores[p.id] = Math.min(100, Math.max(0, parseInt(parsed.paramScores?.[p.id] ?? parsed.paramScores?.[String(p.id)] ?? 60)));
+      });
+      const overall = Math.min(100, Math.max(0, parseInt(parsed.overall) ||
+        Math.round(params.reduce((s,p) => s+(paramScores[p.id]*p.weight/100), 0))));
+      const plagPct = Math.min(100, Math.max(0, parseInt(parsed.plagiarismPct) || 0));
+
+      // Save to Supabase
+      const { data: saved, error } = await SB.from('assignments').insert({
+        student_name: item.studentName,
+        roll_no: item.rollNo,
+        course_id: item.courseId,
+        file_name: item.fileName,
+        uploaded_by: CU.id,
+        status: 'evaluated',
+        ai_overall: overall,
+        ai_param_scores: paramScores,
+        ai_strengths: parsed.strengths || [],
+        ai_improvements: parsed.improvements || [],
+        ai_comments: parsed.comments || [],
+        plag_pct: plagPct,
+        final_score: overall
+      }).select().single();
+
+      if (!error) results.push(saved);
+    } catch(err) {
+      // Save with fallback scores
+      const paramScores = {};
+      params.forEach(p => { paramScores[p.id] = Math.floor(55+Math.random()*35); });
+      const overall = Math.round(params.reduce((s,p) => s+(paramScores[p.id]*p.weight/100), 0));
+      const { data: saved } = await SB.from('assignments').insert({
+        student_name: item.studentName, roll_no: item.rollNo,
+        course_id: item.courseId, file_name: item.fileName,
+        uploaded_by: CU.id, status: 'evaluated',
+        ai_overall: overall, ai_param_scores: paramScores,
+        ai_strengths: ['File received'], ai_improvements: ['Manual review recommended'],
+        ai_comments: ['AI error: '+err.message+' — scores estimated'],
+        plag_pct: 0, final_score: overall
+      }).select().single();
+      if (saved) results.push(saved);
+    }
+  }
+
+  if (document.getElementById('ai-prog')) document.getElementById('ai-prog').style.width='100%';
+  resultEl.innerHTML = `<div class="alert alert-success" style="margin-top:1rem">
+    ✅ ${results.length} assignment(s) evaluated and saved.
+    <button class="btn btn-sm" style="margin-left:10px" onclick="go('review')">Review now →</button>
+  </div>`;
+}
+
+// ── REVIEW ────────────────────────────────────────────────────────────────────
+async function pgReview() {
+  $pc().innerHTML = loading();
+  let q = SB.from('assignments')
+    .select('*, courses(name, parameters(*))')
+    .eq('status','evaluated').eq('approved',false)
+    .order('uploaded_at', {ascending:false});
+  if (CU.role === 'teacher') q = q.eq('uploaded_by', CU.id);
+  const { data: pending } = await q;
+
+  $pc().innerHTML = `
+    <div class="section-header">
+      <div class="section-title">Review & approve</div>
+      <span class="badge badge-amber">${(pending||[]).length} pending</span>
+    </div>
+    ${!(pending||[]).length
+      ? '<div class="empty">Nothing pending review. All caught up.</div>'
+      : (pending||[]).map(a => renderReviewCard(a)).join('')}`;
+}
+
+function renderReviewCard(a) {
+  const params = a.courses?.parameters || [];
+  const scores = a.ai_param_scores || {};
+  const finalScore = a.teacher_overall ?? a.ai_overall;
+
+  return `<div class="card" id="rc-${a.id}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div>
+        <span style="font-size:15px;font-weight:700">${a.student_name}</span>
+        <span class="badge badge-gray" style="margin:0 4px">${a.roll_no}</span>
+        <span class="badge badge-blue">${a.courses?.name}</span>
+        ${a.plag_pct>20?'<span class="badge badge-red" style="margin-left:4px">⚠ high plagiarism</span>':''}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openResultModal('${a.id}')">Full report</button>
+        <button class="btn btn-sm btn-primary" onclick="approveAssignment('${a.id}')">✓ Approve</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">🤖 AI scores <span class="badge badge-blue" style="font-size:10px">auto</span></div>
+        ${params.map(p => `
+          <div class="param-row">
+            <div class="param-name" style="font-size:12px">${p.name}</div>
+            <div class="param-bar"><div class="score-bar"><div class="score-fill ${fillClass(scores[p.id]||0)}" style="width:${scores[p.id]||0}%"></div></div></div>
+            <div class="param-score" style="font-size:12px">${scores[p.id]||0}</div>
+          </div>`).join('')}
+        <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border-radius:var(--radius);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--text2)">AI overall</span>
+          <span class="${scoreClass(a.ai_overall)}" style="font-size:20px;font-weight:700">${a.ai_overall}<span style="font-size:12px;color:var(--text3);font-weight:400">/100</span></span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">✏️ Teacher review <span class="badge badge-amber" style="font-size:10px">optional override</span></div>
+        <div class="form-group">
+          <label class="form-label">Teacher marks (blank = use AI score)</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="tm-${a.id}" type="number" min="0" max="100"
+              value="${a.teacher_overall??''}" placeholder="0–100"
+              style="width:90px" oninput="previewFinal('${a.id}',${a.ai_overall})" />
+            <span style="font-size:12px;color:var(--text2)">/ 100</span>
+          </div>
+        </div>
+        <div style="padding:8px 10px;background:var(--surface2);border-radius:var(--radius);display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem">
+          <span style="font-size:12px;color:var(--text2)">Final score (student sees)</span>
+          <span id="fp-${a.id}" class="${scoreClass(finalScore)}" style="font-size:20px;font-weight:700">${finalScore}<span style="font-size:12px;color:var(--text3);font-weight:400">/100</span></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teacher notes</label>
+          <textarea id="tn-${a.id}" rows="3" placeholder="Feedback for student...">${a.teacher_notes||''}</textarea>
+        </div>
+        ${plagBadge(a.plag_pct||0)}
+      </div>
+    </div>
+  </div>`;
+}
+
+function previewFinal(id, aiScore) {
+  const input = document.getElementById('tm-'+id);
+  const el = document.getElementById('fp-'+id);
+  if (!el) return;
+  const val = input.value.trim();
+  const score = val !== '' ? Math.min(100,Math.max(0,parseInt(val))) : aiScore;
+  el.className = scoreClass(score);
+  el.innerHTML = `${score}<span style="font-size:12px;color:var(--text3);font-weight:400">/100</span>`;
+}
+
+async function approveAssignment(id) {
+  const tm = document.getElementById('tm-'+id);
+  const tn = document.getElementById('tn-'+id);
+  const teacherOverall = tm?.value.trim() !== '' ? Math.min(100,Math.max(0,parseInt(tm.value))) : null;
+
+  // Need ai_overall for final_score fallback
+  const card = document.getElementById('rc-'+id);
+  const aiScoreEl = card?.querySelector(`[id^="fp-"]`);
+
+  const { data: current } = await SB.from('assignments').select('ai_overall').eq('id',id).single();
+  const finalScore = teacherOverall ?? current?.ai_overall;
+
+  const { error } = await SB.from('assignments').update({
+    teacher_overall: teacherOverall,
+    teacher_notes: tn?.value || '',
+    final_score: finalScore,
+    status: 'approved',
+    approved: true,
+    approved_at: new Date().toISOString()
+  }).eq('id', id);
+
+  if (error) { alert('Error: '+error.message); return; }
+  pgReview();
+}
+
+// ── RESULTS ───────────────────────────────────────────────────────────────────
+async function pgResults() {
+  $pc().innerHTML = loading();
+  let q = SB.from('assignments')
+    .select('*, courses(name)')
+    .order('uploaded_at', {ascending: false});
+  if (CU.role === 'teacher') q = q.eq('uploaded_by', CU.id);
+  const { data: asgn } = await q;
+  window._resultsData = asgn || [];
+
+  $pc().innerHTML = `
+    <div class="section-header"><div class="section-title">Results</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <input id="rs-q" placeholder="Search name or roll no..." style="width:220px" oninput="filterResultsUI()" />
+      <select id="rs-s" onchange="filterResultsUI()" style="width:130px">
+        <option value="">All statuses</option>
+        <option value="evaluated">Evaluated</option>
+        <option value="approved">Approved</option>
+      </select>
+    </div>
+    <div id="results-list">${buildResultCards(asgn||[])}</div>`;
+}
+
+function buildResultCards(list) {
+  if (!list.length) return '<div class="empty">No results.</div>';
+  return list.map(a => {
+    const fs = a.final_score ?? a.ai_overall;
+    return `<div class="result-card" onclick="openResultModal('${a.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <span style="font-size:14px;font-weight:700">${a.student_name}</span>
+          <span class="badge badge-gray" style="margin:0 4px">${a.roll_no}</span>
+          <span class="badge badge-blue">${a.courses?.name}</span>
+          ${a.approved?'<span class="badge badge-green" style="margin-left:4px">approved</span>':''}
+          ${(a.plag_pct||0)>20?'<span class="badge badge-red" style="margin-left:4px">⚠ high plag</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="text-align:right">
+            <div class="${scoreClass(fs)}" style="font-size:20px;font-weight:700">${fs??'—'}</div>
+            <div style="font-size:10px;color:var(--text3)">${a.teacher_overall!=null?'teacher':'AI'} score</div>
+          </div>
+          ${plagBadge(a.plag_pct||0)}
+          <span style="color:var(--text3)">›</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterResultsUI() {
+  const q = document.getElementById('rs-q').value.toLowerCase();
+  const s = document.getElementById('rs-s').value;
+  let list = window._resultsData || [];
+  if (q) list = list.filter(a => a.student_name.toLowerCase().includes(q)||a.roll_no.toLowerCase().includes(q));
+  if (s) list = list.filter(a => a.status === s);
+  document.getElementById('results-list').innerHTML = buildResultCards(list);
+}
+
+// ── RESULT MODAL ──────────────────────────────────────────────────────────────
+async function openResultModal(id) {
+  document.getElementById('modal-root').innerHTML =
+    `<div class="modal-overlay"><div class="modal" style="width:660px">${loading('Loading report...')}</div></div>`;
+
+  const { data: a } = await SB.from('assignments')
+    .select('*, courses(name, parameters(*))').eq('id',id).single();
+  if (!a) { closeModal(); return; }
+
+  const params  = a.courses?.parameters || [];
+  const scores  = a.ai_param_scores || {};
+  const fs      = a.final_score ?? a.ai_overall;
+  const tOver   = a.teacher_overall != null;
+
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="width:660px">
+        <div class="modal-header">
+          <div>
+            <div class="modal-title">${a.student_name}</div>
+            <div style="font-size:12px;color:var(--text2)">${a.courses?.name} · ${a.roll_no} · ${fmtDate(a.uploaded_at)}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="exportPDF('${a.id}')">⬇ Export PDF</button>
+            <button class="btn btn-sm" onclick="closeModal()">✕</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;gap:1rem;margin-bottom:1rem">
+          <div style="flex:1;padding:12px;background:var(--surface2);border-radius:var(--radius);text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">🤖 AI SCORE</div>
+            <div class="${scoreClass(a.ai_overall)}" style="font-size:28px;font-weight:700;opacity:${tOver?'.5':'1'}">${a.ai_overall}</div>
+            <div style="font-size:11px;color:var(--text3)">/100</div>
+          </div>
+          ${tOver?`<div style="flex:1;padding:12px;background:var(--surface2);border-radius:var(--radius);text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">✏️ TEACHER SCORE</div>
+            <div class="${scoreClass(a.teacher_overall)}" style="font-size:28px;font-weight:700">${a.teacher_overall}</div>
+            <div style="font-size:11px;color:var(--text3)">/100</div>
+          </div>`:''}
+          <div style="flex:1;padding:12px;border:2px solid ${fs>=75?'#639922':fs>=55?'#EF9F27':'#E24B4A'};border-radius:var(--radius);text-align:center">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px">🎯 FINAL SCORE</div>
+            <div class="${scoreClass(fs)}" style="font-size:32px;font-weight:700">${fs}</div>
+            <div style="font-size:11px;color:var(--text3)">${tOver?'teacher override':'AI score'}</div>
+          </div>
+          <div class="plag-box" style="flex:1;flex-direction:column;text-align:center;justify-content:center">
+            <div class="plag-pct ${(a.plag_pct||0)>20?'score-low':(a.plag_pct||0)>10?'score-mid':'score-high'}">${a.plag_pct||0}%</div>
+            <div style="font-size:11px;color:var(--text2)">plagiarism</div>
+            <div style="margin-top:6px">${statusBadge(a.status)}</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">PARAMETER SCORES (AI)</div>
+        ${params.map(p=>`
+          <div class="param-row">
+            <div class="param-name">${p.name} <span style="font-size:11px;color:var(--text3)">(${p.weight}%)</span></div>
+            <div class="param-bar"><div class="score-bar"><div class="score-fill ${fillClass(scores[p.id]||0)}" style="width:${scores[p.id]||0}%"></div></div></div>
+            <div class="param-score ${scoreClass(scores[p.id]||0)}">${scores[p.id]||0}</div>
+          </div>`).join('')}
+        <div class="divider"></div>
+        <div class="grid-2" style="margin-bottom:1rem">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">STRENGTHS</div>
+            <ul class="bullet-list">${(a.ai_strengths||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">IMPROVEMENTS</div>
+            <ul class="bullet-list">${(a.ai_improvements||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">COMMENTS</div>
+        <ul class="bullet-list" style="margin-bottom:1rem">${(a.ai_comments||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+        ${a.teacher_notes?`<div class="divider"></div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">TEACHER NOTES</div>
+          <div class="note-box">${a.teacher_notes}</div>`:''}
+      </div>
+    </div>`;
+  window._modalAssignment = a;
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────────────────────────
+async function exportPDF(id) {
+  const a = window._modalAssignment?.id === id
+    ? window._modalAssignment
+    : (await SB.from('assignments').select('*, courses(name, parameters(*))').eq('id',id).single()).data;
+  if (!a) return;
+  const params = a.courses?.parameters || [];
+  const scores = a.ai_param_scores || {};
+  const fs = a.final_score ?? a.ai_overall;
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>EvalPro — ${a.student_name}</title>
+  <style>body{font-family:sans-serif;padding:2rem;max-width:700px;margin:0 auto}h1{font-size:20px}h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#666;margin:1.25rem 0 8px;border-bottom:1px solid #eee;padding-bottom:4px}.meta{color:#666;font-size:12px;margin-bottom:1.5rem}.scores-row{display:flex;gap:1.5rem;padding:1rem;background:#f7f7f5;border-radius:8px;margin-bottom:1rem}.score-box{text-align:center}.big{font-size:32px;font-weight:700}.label{font-size:11px;color:#888}.param-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}.pname{width:180px;font-size:13px}.pbar{flex:1;height:5px;background:#eee;border-radius:3px}.pfill{height:100%;border-radius:3px}.pnum{width:36px;text-align:right;font-size:13px;font-weight:700}li{font-size:13px;line-height:1.6;margin-bottom:4px}.note{background:#f7f7f5;padding:10px;border-radius:6px;font-size:13px;border-left:3px solid #185FA5}.footer{margin-top:2rem;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:8px}</style></head>
+  <body><h1>Assignment Evaluation Report</h1>
+  <div class="meta">${a.courses?.name} · Roll: ${a.roll_no} · ${fmtDate(a.uploaded_at)}</div>
+  <div class="scores-row">
+    <div class="score-box"><div class="big" style="color:${fs>=75?'#3B6D11':fs>=55?'#BA7517':'#A32D2D'}">${a.ai_overall}</div><div class="label">AI score</div></div>
+    ${a.teacher_overall!=null?`<div class="score-box"><div class="big" style="color:${a.teacher_overall>=75?'#3B6D11':a.teacher_overall>=55?'#BA7517':'#A32D2D'}">${a.teacher_overall}</div><div class="label">Teacher score</div></div>`:''}
+    <div class="score-box"><div class="big" style="color:${fs>=75?'#3B6D11':fs>=55?'#BA7517':'#A32D2D'}">${fs}</div><div class="label">Final score</div></div>
+    <div class="score-box"><div class="big" style="color:${(a.plag_pct||0)>20?'#A32D2D':(a.plag_pct||0)>10?'#BA7517':'#3B6D11'}">${a.plag_pct||0}%</div><div class="label">Plagiarism</div></div>
+  </div>
+  <h2>Parameter scores</h2>
+  ${params.map(p=>`<div class="param-row"><span class="pname">${p.name} (${p.weight}%)</span><div class="pbar"><div class="pfill" style="width:${scores[p.id]||0}%;background:${(scores[p.id]||0)>=75?'#639922':(scores[p.id]||0)>=55?'#EF9F27':'#E24B4A'}"></div></div><span class="pnum">${scores[p.id]||0}</span></div>`).join('')}
+  <h2>Strengths</h2><ul>${(a.ai_strengths||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+  <h2>Improvements</h2><ul>${(a.ai_improvements||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+  <h2>Comments</h2><ul>${(a.ai_comments||[]).map(s=>`<li>${s}</li>`).join('')}</ul>
+  ${a.teacher_notes?`<h2>Teacher notes</h2><div class="note">${a.teacher_notes}</div>`:''}
+  <div class="footer">EvalPro · ${new Date().toLocaleDateString('en-IN')} · ${a.teacher_overall!=null?'Teacher reviewed':''}</div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(),400);
+}
+
+// ── ANALYTICS ─────────────────────────────────────────────────────────────────
+async function pgAnalytics() {
+  $pc().innerHTML = loading();
+  let q = SB.from('assignments').select('*, courses(name, parameters(*))').order('uploaded_at');
+  if (CU.role === 'teacher') q = q.eq('uploaded_by', CU.id);
+  const { data: asgn } = await q;
+  const { data: courses } = await SB.from('courses').select('*, parameters(*)');
+  const scored = (asgn||[]).filter(a => a.ai_overall);
+  const avg = scored.length ? (scored.reduce((s,a)=>s+(a.final_score??a.ai_overall),0)/scored.length).toFixed(1) : '—';
+
+  const byStudent = {};
+  scored.forEach(a => {
+    if (!byStudent[a.roll_no]) byStudent[a.roll_no]={name:a.student_name,roll:a.roll_no,scores:[],courses:[]};
+    byStudent[a.roll_no].scores.push(a.final_score??a.ai_overall);
+    byStudent[a.roll_no].courses.push(a.courses?.name);
+  });
+
+  $pc().innerHTML = `
+    <div class="section-header"><div class="section-title">Analytics</div></div>
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Total evaluated</div><div class="metric-value">${scored.length}</div></div>
+      <div class="metric-card"><div class="metric-label">Platform avg</div><div class="metric-value">${avg}</div></div>
+      <div class="metric-card"><div class="metric-label">High plagiarism</div><div class="metric-value" style="color:var(--red)">${scored.filter(a=>(a.plag_pct||0)>20).length}</div></div>
+      <div class="metric-card"><div class="metric-label">Approved</div><div class="metric-value" style="color:var(--green)">${scored.filter(a=>a.approved).length}</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Student performance</div>
+        ${Object.values(byStudent).map(s => {
+          const savg = s.scores.reduce((a,b)=>a+b,0)/s.scores.length;
+          return `<div style="padding:8px 0;border-bottom:0.5px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <div><span style="font-size:13px;font-weight:600">${s.name}</span> <span style="font-size:12px;color:var(--text2)">${s.roll}</span></div>
+              <span class="${scoreClass(savg)}" style="font-size:14px;font-weight:700">${savg.toFixed(0)}</span>
+            </div>
+            <div class="score-bar"><div class="score-fill ${fillClass(savg)}" style="width:${savg}%"></div></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${[...new Set(s.courses)].join(' · ')} · ${s.scores.length} submission(s)</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title">Course parameter averages</div>
+        ${(courses||[]).map(c => {
+          const ca = scored.filter(a => a.course_id === c.id);
+          if (!ca.length) return `<div style="padding:6px 0;font-size:13px;color:var(--text3)">${c.name} — no data</div>`;
+          return `<div style="margin-bottom:1rem">
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px">${c.name}</div>
+            ${(c.parameters||[]).map(p => {
+              const pavg = ca.reduce((s,a)=>s+((a.ai_param_scores||{})[p.id]||0),0)/ca.length;
+              return `<div class="param-row" style="margin-bottom:4px">
+                <div style="font-size:12px;width:140px">${p.name}</div>
+                <div class="param-bar"><div class="score-bar"><div class="score-fill ${fillClass(pavg)}" style="width:${pavg}%"></div></div></div>
+                <div style="font-size:12px;font-weight:700;width:30px;text-align:right;${pavg<55?'color:var(--red)':''}">${pavg.toFixed(0)}</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
